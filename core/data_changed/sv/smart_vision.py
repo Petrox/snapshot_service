@@ -1,20 +1,20 @@
 import datetime
+import json
 from typing import List
 from datetime import timedelta
 from shapely.geometry import Polygon
 
-from core.data_changed.od.od_model import OdModel
+from core.data_changed.sv.smart_vision_model import SmartVisionModel
 from core.filters.detections import DetectionBox
 
 
-class Od:
+class SmartVision:
     def __init__(self):
         self.id: str = ''
         self.brand: str = ''
         self.name: str = ''
         self.address: str = ''
         self.created_at: str = ''
-        self.selected_list_length: int = 0
         self.selected_list: dict = {}
         self.zones_list: List[Polygon] = []
         self.masks_list: List[Polygon] = []
@@ -30,10 +30,13 @@ class Od:
         return Polygon([(x1, y1), (x1, y2), (x2, y1), (x2, y2)])
 
     @staticmethod
-    def __create_polygon(value: str, separator: str):
+    def __create_polygon(value: str, separator: str) -> Polygon | None:
         if len(value) == 0:
             return Polygon([])
         arr = value.split(separator)  # arr.length is always an even number
+        arr_len = len(arr)
+        if (arr_len % 2) != 0 or arr_len < 6:
+            return None
         length = int(len(arr) / 2)
         index = 0
         points = []
@@ -52,7 +55,8 @@ class Od:
             splits = line.split(self.array_separator)
             for split in splits:
                 zone_list = self.__create_polygon(split, self.separator)
-                ret.append(zone_list)
+                if zone_list is not None:
+                    ret.append(zone_list)
         return ret
 
     def is_in_zones(self, do: DetectionBox) -> bool:
@@ -77,11 +81,11 @@ class Od:
                 return True
         return False
 
-    def is_selected(self, cls_idx: int) -> bool:
-        return cls_idx in self.selected_list
+    def is_selected(self, label: str) -> bool:
+        return label in self.selected_list
 
-    def check_threshold(self, cls_idx: int, threshold: float) -> bool:
-        return threshold >= self.selected_list[cls_idx]
+    def check_threshold(self, label: str, threshold: float) -> bool:
+        return threshold >= self.selected_list[label]
 
     def is_in_time(self) -> bool:
         if not self.time_in_enabled:
@@ -105,33 +109,25 @@ class Od:
         if len(splits) != 2:
             return False, timedelta()
 
-        ok, hour = Od.__int_try_parse(splits[0])
+        ok, hour = SmartVision.__int_try_parse(splits[0])
         if not ok:
             return False, timedelta()
-        ok, minute = Od.__int_try_parse(splits[1])
+        ok, minute = SmartVision.__int_try_parse(splits[1])
         if not ok:
             return False, timedelta()
         return True, timedelta(hours=hour, minutes=minute)
 
-    def map_from(self, od_model: OdModel):
-        self.id = od_model.id
-        self.brand = od_model.brand
-        self.name = od_model.name
-        self.address = od_model.address
-        self.created_at = od_model.created_at
-        indices = [int(item) for item in od_model.selected_list.split(self.separator)] if len(od_model.selected_list) > 0 else []
-        self.selected_list_length = len(indices)
-        if self.selected_list_length > 0:
-            thresholds = od_model.threshold_list.split(self.separator)  # thresholds.length must be equal to indices' length
-            index = 0
-            for cls_idx in indices:
-                self.selected_list[cls_idx] = float(thresholds[index])
-                index += 1
-
-        self.zones_list = self.__create_polygon_list(od_model.zones_list)
-        self.masks_list = self.__create_polygon_list(od_model.masks_list)
-        self.time_in_enabled, self.start_time = self.__get_time(od_model.start_time)
+    def map_from(self, model: SmartVisionModel):
+        self.id = model.id
+        self.brand = model.brand
+        self.name = model.name
+        self.address = model.address
+        self.created_at = model.created_at
+        self.selected_list = json.loads(model.selected_list_json)
+        self.zones_list = self.__create_polygon_list(model.zones_list)
+        self.masks_list = self.__create_polygon_list(model.masks_list)
+        self.time_in_enabled, self.start_time = self.__get_time(model.start_time)
         if self.time_in_enabled:
-            self.time_in_enabled, self.end_time = self.__get_time(od_model.end_time)
+            self.time_in_enabled, self.end_time = self.__get_time(model.end_time)
 
         return self

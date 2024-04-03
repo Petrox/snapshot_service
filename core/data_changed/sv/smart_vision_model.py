@@ -1,15 +1,15 @@
 from common.data.source_model import SourceModel
 
 
-class OdModel:
+class SmartVisionModel:
     def __init__(self):
         self.id: str = ''
         self.brand: str = ''
         self.name: str = ''
         self.address: str = ''
         self.created_at: str = ''
-        self.threshold_list: str = '0.8'
-        self.selected_list: str = '0'
+        # todo: reflect changes to UI and other parts of the system
+        self.selected_list_json: str = '{"person":0.8}'
         self.zones_list: str = ''
         self.masks_list: str = ''
         self.start_time: str = ''

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from common.utilities import logger
-from core.data_changed.od.od_cache import OdCache
+from core.data_changed.sv.smart_vision_cache import SmartVisionCache
 from core.data_changed.prev_image_cache import PrevImageCache
 from core.filters.filters import Filter, TimeFilter, MotionDetectionFilter, ZoneFilter, MaskFilter
 from core.filters.messages import InMessage
 
 
 class InFilters(Filter):
-    def __init__(self, od_cache: OdCache):
-        super().__init__(od_cache)
+    def __init__(self, smart_vision_cache: SmartVisionCache):
+        super().__init__(smart_vision_cache)
         self.prev_image_cache: PrevImageCache | None = None
 
     def set_prev_image_cache(self, prev_image_cache: PrevImageCache):
@@ -28,26 +28,25 @@ class InFilters(Filter):
             logger.error(f'source({message.source_id}) was not found in filters operation')
             return None
 
-        time_filter: TimeFilter = TimeFilter(self.od_cache)
+        time_filter: TimeFilter = TimeFilter(self.smart_vision_cache)
         if not time_filter.ok(message):
             logger.warning(f'time filter is not ok for source({message.source_id})')
             return None
 
-        motion_detection_filter = MotionDetectionFilter(self.od_cache, source_model, self.prev_image_cache)
+        motion_detection_filter = MotionDetectionFilter(self.smart_vision_cache, source_model, self.prev_image_cache)
         if not motion_detection_filter.ok(message):
-            logger.warning(f'motion detection filter is not ok for source({message.source_id})')
             return None
 
         detection_boxes = motion_detection_filter.get_detection_boxes()
         if len(detection_boxes) == 0:  # it may be NoMotionDetection, ImageHash or PSNR
             return message
 
-        zone_filter = ZoneFilter(self.od_cache, detection_boxes)
+        zone_filter = ZoneFilter(self.smart_vision_cache, detection_boxes)
         if not zone_filter.ok(message):
             logger.warning(f'zone filter is not ok for source({message.source_id})')
             return None
 
-        mask_filter = MaskFilter(self.od_cache, detection_boxes)
+        mask_filter = MaskFilter(self.smart_vision_cache, detection_boxes)
         if not mask_filter.ok(message):
             logger.warning(f'mask filter is not ok for source({message.source_id})')
             return None

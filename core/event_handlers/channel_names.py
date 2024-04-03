@@ -6,4 +6,4 @@ class EventChannels(str, Enum):
     data_changed = 'data_changed'
     snapshot_in = 'snapshot_in'
     snapshot_out = 'snapshot_out'
-    od_service = 'od_service'
+    smcp_in = 'smcp_in'

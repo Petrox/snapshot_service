@@ -8,10 +8,10 @@ class DetectionBox:
 
 class DetectionResult:
     def __init__(self):
-        self.pred_cls_name: str = ''
-        self.pred_cls_idx: int = 0
-        self.pred_score: float = 0.0
+        self.module: str = ''
+        self.label: str = ''
+        self.score: float = 0.0
         self.box: DetectionBox = DetectionBox()
 
     def format(self) -> str:
-        return f'{self.pred_cls_name} {"{:.2f}".format(self.pred_score)}'
+        return f'{self.label} {"{:.2f}".format(self.score)}'

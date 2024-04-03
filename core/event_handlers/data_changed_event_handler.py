@@ -4,7 +4,7 @@ from redis.client import Redis
 
 from common.event_bus.event_handler import EventHandler
 from common.utilities import logger
-from core.data_changed.od.od_cache import OdCache
+from core.data_changed.sv.smart_vision_cache import SmartVisionCache
 from core.data_changed.prev_image_cache import PrevImageCache
 from core.data_changed.source_cache import SourceCache
 from core.event_handlers.channel_names import EventChannels
@@ -33,7 +33,7 @@ class DataChangedEventHandler(EventHandler):
         self.encoding = 'utf-8'
         self.prev_image_cache = prev_image_cache
         self.source_cache = SourceCache(connection)
-        self.od_cache = OdCache(connection, self.source_cache)
+        self.smart_vision_cache = SmartVisionCache(connection, self.source_cache)
 
     def handle(self, dic: dict):
         if dic is None or dic['type'] != 'message':
@@ -59,13 +59,14 @@ class DataChangedEventHandler(EventHandler):
             else:
                 raise NotImplementedError(event.op)
 
-        elif event.model_name == 'od':
+        #  todo: change od to smart_vision on mngr and UI
+        elif event.model_name == 'smart_vision':
             if event.op == ModelChangedOp.SAVE:
-                self.od_cache.refresh(mc.source_id)
-                logger.warning('Od Cache has been refreshed')
+                self.smart_vision_cache.refresh(mc.source_id)
+                logger.warning('Smart Vision Cache has been refreshed')
             elif event.op == ModelChangedOp.DELETE:
-                self.od_cache.remove(mc.source_id)
-                logger.warning('Od Cache has been removed')
+                self.smart_vision_cache.remove(mc.source_id)
+                logger.warning('Smart Vision Cache has been removed')
             else:
                 raise NotImplementedError(event.op)
 

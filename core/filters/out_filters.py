@@ -6,15 +6,14 @@ import io
 import base64
 
 from common.utilities import logger, config
-from core.data_changed.od.od_cache import OdCache
-from core.event_handlers.channel_names import EventChannels
-from core.filters.filters import Filter, ZoneFilter, MaskFilter, OdFilter
+from core.data_changed.sv.smart_vision_cache import SmartVisionCache
+from core.filters.filters import Filter, ZoneFilter, MaskFilter, ObjectDetectionFilter
 from core.filters.messages import OutMessage
 
 
 class OutFilters(Filter):
-    def __init__(self, od_cache: OdCache):
-        super().__init__(od_cache)
+    def __init__(self, smart_vision_cache: SmartVisionCache):
+        super().__init__(smart_vision_cache)
         self.colors = self.__create_colors()
         self.colors_length = len(self.colors)
         self.overlay = config.snapshot.overlay
@@ -37,7 +36,7 @@ class OutFilters(Filter):
     def __draw(self, message: OutMessage):
         np_image = message.np_img
         if np_image is None:
-            logger.error(f'could not convert base64 image to numpy array, source id:{message.source_id}, channel: {message.channel}')
+            logger.error(f'could not convert base64 image to numpy array, source id:{message.source_id}, channel: {message.module}')
             return
         # pil_image = Image.fromarray(np_image)
         for idx, d in enumerate(message.detections):
@@ -64,24 +63,25 @@ class OutFilters(Filter):
             logger.error(f'a snapshot image is not valid for source({message.source_id})')
             return None
 
-        if message.channel == EventChannels.od_service:
+        # todo: use smart_vision_enabled flag instead of 'od' on ai_module_model later
+        if message.module == 'od':
             source_model = self.source_cache.get(message.source_id)
             if source_model is None:
                 logger.error(f'source({message.source_id}) was not found in filters operation')
                 return None
 
-            od_filter = OdFilter(self.od_cache)
-            if not od_filter.ok(message):
-                logger.warning(f'od filter is not ok for source({message.source_id})')
+            object_detection_filter = ObjectDetectionFilter(self.smart_vision_cache)
+            if not object_detection_filter.ok(message):
+                logger.warning(f'object detection filter is not ok for source({message.source_id})')
                 return None
 
             boxes = [d.box for d in message.detections]
             if source_model.md_type > 1 and len(boxes) > 0:
-                zone_filter = ZoneFilter(self.od_cache, boxes)
+                zone_filter = ZoneFilter(self.smart_vision_cache, boxes)
                 if not zone_filter.ok(message):
                     logger.warning(f'zone filter is not ok for source({message.source_id})')
                     return None
-                mask_filter = MaskFilter(self.od_cache, boxes)
+                mask_filter = MaskFilter(self.smart_vision_cache, boxes)
                 if not mask_filter.ok(message):
                     logger.warning(f'mask filter is not ok for source({message.source_id})')
                     return None
